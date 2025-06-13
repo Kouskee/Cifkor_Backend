@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
+using Zenject;
 
 public class BreedsView : MonoBehaviour
 {
     [Header("UI References")]
     [SerializeField] private RectTransform _content;
-    [SerializeField] private GameObject _itemPrefab;
     [SerializeField] private GameObject _loadingIndicator;
     [SerializeField] private PopupView _detailsPopup;
     [SerializeField] private ScrollRect _scrollRect;
@@ -17,6 +17,9 @@ public class BreedsView : MonoBehaviour
     private readonly List<BreedItemView> _breedItems = new();
 
     public IObservable<string> OnBreedSelected => _breedSelectedSubject.AsObservable();
+
+    [Inject]
+    private PlaceholderFactory<BreedItemView> _breedItemFactory;
 
     private void Awake()
     {
@@ -30,6 +33,11 @@ public class BreedsView : MonoBehaviour
             _loadingIndicator.SetActive(show);
     }
 
+    private void OnEnable()
+    {
+        ResetVerticalPosition();
+    }
+
     public void DisplayBreeds(List<BreedModel> breeds)
     {
         ClearBreedsList();
@@ -41,6 +49,11 @@ public class BreedsView : MonoBehaviour
             _breedItems.Add(breedItem);
         }
 
+        ResetVerticalPosition();
+    }
+
+    private void ResetVerticalPosition()
+    {
         if (_scrollRect != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
@@ -50,18 +63,11 @@ public class BreedsView : MonoBehaviour
 
     private BreedItemView CreateBreedItem(BreedModel breed, int index)
     {
-        var itemGO = Instantiate(_itemPrefab, _content);
-        var breedItem = itemGO.GetComponent<BreedItemView>();
-
-        if (breedItem == null)
-        {
-            breedItem = itemGO.AddComponent<BreedItemView>();
-        }
-
+        var breedItem = _breedItemFactory.Create();
+        breedItem.transform.SetParent(_content, false);
         breedItem.Setup(breed, index);
         breedItem.OnClicked.Subscribe(breedId => _breedSelectedSubject.OnNext(breedId))
-                           .AddTo(this);
-
+                   .AddTo(this);
         return breedItem;
     }
 
